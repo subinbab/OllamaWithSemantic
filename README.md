@@ -43,94 +43,34 @@ Update the `Program.cs` file as follows:
 
 ```csharp
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Connectors.AI.Ollama;
-
-class Program
-{
-    static async Task Main(string[] args)
-    {
-        Console.WriteLine("Starting chat with Ollama model...");
-
-        // Initialize Semantic Kernel
-        var kernel = new KernelBuilder().WithOllamaChatModel("phi3:mini").Build();
-
-        // Start the conversation
-        while (true)
-        {
-            Console.Write("You: ");
-            string userInput = Console.ReadLine();
-
-            if (string.IsNullOrWhiteSpace(userInput) || userInput.Equals("exit", StringComparison.OrdinalIgnoreCase))
-            {
-                Console.WriteLine("Exiting chat. Goodbye!");
-                break;
-            }
-
-            var response = await kernel.GetResponseAsync(userInput);
-            Console.WriteLine($"Ollama: {response}");
-        }
-    }
-}
-```
-
-## Running the Application
-
-1. Build and run the application:
-   ```bash
-   dotnet run
-   ```
-
-2. Interact with the `phi3:mini` model by entering text prompts. Type `exit` to end the chat.
-
-## GitHub README Content
-
-### Ollama Chat Integration
-
-Integrate Ollama models with .NET 8 Console App using the Semantic Kernel.
-
-#### Prerequisites
-- Install [Ollama](https://ollama.com/download).
-- .NET SDK 8.0 or later.
-
-#### Setup
-```bash
-dotnet new console -n OllamaChatApp
-cd OllamaChatApp
-
-dotnet add package Microsoft.SemanticKernel --version 1.24.1
-dotnet add package Microsoft.SemanticKernel.Connectors.Ollama --version 1.24.1-alpha
-```
-
-#### Program.cs
-```csharp
+using Microsoft.SemanticKernel.ChatCompletion;
 #pragma warning disable SKEXP0070
 
-using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Connectors.AI.Ollama;
+var builder = Kernel.CreateBuilder();
+builder.AddOllamaChatCompletion("phi3:mini", new Uri("http://localhost:11434"));
 
-class Program
+var kernel = builder.Build();
+var chatService = kernel.GetRequiredService<IChatCompletionService>();
+
+var history = new ChatHistory();
+history.AddSystemMessage("You are a helpful assistant.");
+
+while (true)
 {
-    static async Task Main(string[] args)
+    Console.Write("You: ");
+    var userMessage = Console.ReadLine();
+
+    if (string.IsNullOrWhiteSpace(userMessage))
     {
-        var kernel = new KernelBuilder().WithOllamaChatModel("phi3:mini").Build();
-
-        while (true)
-        {
-            Console.Write("You: ");
-            string userInput = Console.ReadLine();
-
-            if (string.IsNullOrWhiteSpace(userInput) || userInput.Equals("exit", StringComparison.OrdinalIgnoreCase))
-                break;
-
-            var response = await kernel.GetResponseAsync(userInput);
-            Console.WriteLine($"Ollama: {response}");
-        }
+        break;
     }
+
+    history.AddUserMessage(userMessage);
+
+    var response = await chatService.GetChatMessageContentAsync(history);
+
+    Console.WriteLine($"Bot: {response.Content}");
+
+    history.AddMessage(response.Role, response.Content ?? string.Empty);
 }
 ```
-
-#### Run the App
-```bash
-dotnet run
-```
-
